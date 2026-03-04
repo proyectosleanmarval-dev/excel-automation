@@ -17,10 +17,17 @@
 <table id="tabla"></table>
 
 <script>
-fetch('estadoObra_filtrado.csv')
-    .then(response => response.text())
+const csvUrl = window.location.pathname.replace("index.html","") + "estadoObra_filtrado.csv";
+
+fetch(csvUrl)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("No se encontró el CSV en: " + csvUrl);
+        }
+        return response.text();
+    })
     .then(data => {
-        const rows = data.split('\n');
+        const rows = data.trim().split('\n');
         const table = document.getElementById('tabla');
 
         rows.forEach((row, index) => {
@@ -35,6 +42,9 @@ fetch('estadoObra_filtrado.csv')
 
             table.appendChild(tr);
         });
+    })
+    .catch(error => {
+        document.body.innerHTML += "<p style='color:red'>" + error.message + "</p>";
     });
 </script>
 
