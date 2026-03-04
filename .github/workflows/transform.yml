@@ -30,11 +30,16 @@ jobs:
         run: |
           python scripts/transform.py
 
+      - name: Copiar CSV a docs para publicación
+        run: |
+          cp data/transformed/estadoObra_filtrado.csv docs/estadoObra_filtrado.csv
+
       - name: Commit archivos transformados
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/transformed/estadoObra_filtrado.xlsx
           git add data/transformed/estadoObra_filtrado.csv
+          git add docs/estadoObra_filtrado.csv
           git commit -m "Actualiza archivos filtrados automáticamente" || echo "Sin cambios"
           git push
