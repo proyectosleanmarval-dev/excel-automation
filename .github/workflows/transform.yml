@@ -1,5 +1,8 @@
 name: Transformar Estado Obra
 
+permissions:
+  contents: write
+
 on:
   push:
     paths:
