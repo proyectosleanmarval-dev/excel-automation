@@ -6,7 +6,8 @@ from pathlib import Path
 # ==============================
 
 input_path = Path("data/original/estadoObra.xlsx")
-output_path = Path("data/transformed/estadoObra_filtrado.xlsx")
+output_excel = Path("data/transformed/estadoObra_filtrado.xlsx")
+output_csv = Path("data/transformed/estadoObra_filtrado.csv")
 
 # ==============================
 # Lectura del archivo
@@ -15,28 +16,44 @@ output_path = Path("data/transformed/estadoObra_filtrado.xlsx")
 df = pd.read_excel(input_path)
 
 # ==============================
-# Validación de existencia de columna
+# Normalizar nombres de columnas
 # ==============================
 
-if "Sucursal" not in df.columns:
-    raise ValueError("La columna 'Sucursal' no existe en el archivo.")
+df.columns = (
+    df.columns
+    .astype(str)
+    .str.strip()
+    .str.lower()
+)
 
 # ==============================
-# Transformación (robusta)
+# Validación
+# ==============================
+
+if "sucursal" not in df.columns:
+    raise ValueError(f"Columnas encontradas: {list(df.columns)}")
+
+# ==============================
+# Transformación
 # ==============================
 
 df_filtrado = df[
-    df["Sucursal"]
+    df["sucursal"]
     .astype(str)
     .str.strip()
     .str.lower() == "bogota"
 ]
 
 # ==============================
-# Guardar resultado
+# Guardar resultados
 # ==============================
 
-output_path.parent.mkdir(parents=True, exist_ok=True)
-df_filtrado.to_excel(output_path, index=False)
+output_excel.parent.mkdir(parents=True, exist_ok=True)
+
+# Excel
+df_filtrado.to_excel(output_excel, index=False)
+
+# CSV
+df_filtrado.to_csv(output_csv, index=False, encoding="utf-8")
 
 print("Transformación completada correctamente.")
