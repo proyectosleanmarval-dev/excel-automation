@@ -30,25 +30,27 @@ df.columns = (
     df.columns
     .astype(str)
     .str.strip()
-    .str.lower()
 )
 
 # =====================================
 # Validación de columna requerida
 # =====================================
 
-if "sucursal" not in df.columns:
-    raise ValueError(f"La columna 'Sucursal' no existe. Columnas encontradas: {list(df.columns)}")
+if "descSucursal" not in df.columns:
+    raise ValueError(
+        f"La columna 'descSucursal' no existe. "
+        f"Columnas encontradas: {list(df.columns)}"
+    )
 
 # =====================================
-# Transformación robusta
+# Transformación
+# Filtro EXACTO por "BOGOTA "
 # =====================================
 
 df_filtrado = df[
-    df["sucursal"]
+    df["descSucursal"]
     .astype(str)
-    .str.strip()
-    .str.lower() == "bogota"
+    .str.upper() == "BOGOTA "
 ]
 
 # =====================================
@@ -61,11 +63,12 @@ output_excel.parent.mkdir(parents=True, exist_ok=True)
 # Guardar resultados
 # =====================================
 
-# Excel
 df_filtrado.to_excel(output_excel, index=False)
-
-# CSV
 df_filtrado.to_csv(output_csv, index=False, encoding="utf-8")
+
+# =====================================
+# Logs informativos
+# =====================================
 
 print("Transformación completada correctamente.")
 print(f"Registros originales: {len(df)}")
