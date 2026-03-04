@@ -23,16 +23,18 @@ jobs:
 
       - name: Instalar dependencias
         run: |
+          python -m pip install --upgrade pip
           pip install pandas openpyxl
 
       - name: Ejecutar script de transformación
         run: |
           python scripts/transform.py
 
-      - name: Commit archivo transformado
+      - name: Commit archivos transformados
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/transformed/estadoObra_filtrado.xlsx
-          git commit -m "Actualiza archivo filtrado automáticamente" || echo "Sin cambios"
+          git add data/transformed/estadoObra_filtrado.csv
+          git commit -m "Actualiza archivos filtrados automáticamente" || echo "Sin cambios"
           git push
