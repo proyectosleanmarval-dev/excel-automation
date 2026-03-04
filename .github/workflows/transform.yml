@@ -30,9 +30,17 @@ jobs:
         run: |
           python scripts/transform.py
 
+      - name: Verificar archivos generados
+        run: |
+          echo "Contenido de data/transformed:"
+          ls -la data/transformed/
+
       - name: Copiar CSV a docs para publicación
         run: |
-          cp data/transformed/estadoObra_filtrado.csv docs/estadoObra_filtrado.csv
+          mkdir -p docs
+          cp data/transformed/estadoObra_filtrado.csv docs/
+          echo "Contenido de docs:"
+          ls -la docs/
 
       - name: Commit archivos transformados
         run: |
