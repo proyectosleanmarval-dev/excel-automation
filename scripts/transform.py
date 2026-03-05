@@ -35,10 +35,13 @@ if not input_path.exists():
     raise FileNotFoundError(f"No se encontró el archivo: {input_path}")
 
 # =====================================
-# Lectura del archivo
+# Lectura del archivo (solo hoja Avances)
 # =====================================
 
-df = pd.read_excel(input_path)
+try:
+    df = pd.read_excel(input_path, sheet_name="Restricciones")
+except ValueError:
+    raise ValueError("La hoja 'Restricciones' no existe en el archivo Excel.")
 
 # =====================================
 # Normalización de nombres de columnas
