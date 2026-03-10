@@ -1,145 +1,163 @@
 <script>
+
 const csvUrl = "estadoObra_filtrado.csv";
 
 fetch(csvUrl)
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("No se encontró el archivo de datos");
+.then(response => {
+    if (!response.ok) {
+        throw new Error("No se encontró el archivo de datos");
+    }
+    return response.text();
+})
+.then(data => {
+
+    const rows = data.trim().split('\n');
+    const headers = rows[0].split(',');
+    const dataRows = rows.slice(1).map(r => r.split(','));
+
+    const idxFecha = headers.indexOf('fechaRegistro');
+    const idxProyecto = headers.indexOf('descProyecto');
+    const idxTipo = headers.indexOf('tipoRestriccion');
+
+    if (idxFecha === -1 || idxProyecto === -1 || idxTipo === -1) {
+        throw new Error("No se encontraron columnas requeridas");
+    }
+
+    const hoy = new Date();
+    const mesActual = hoy.getMonth();
+    const añoActual = hoy.getFullYear();
+
+    const mesAnterior = mesActual === 0 ? 11 : mesActual - 1;
+    const añoMesAnterior = mesActual === 0 ? añoActual - 1 : añoActual;
+
+    const nombreMesActual = hoy.toLocaleString('es', { month: 'long' });
+    const nombreMesAnterior = new Date(añoMesAnterior, mesAnterior, 1)
+        .toLocaleString('es', { month: 'long' });
+
+    document.getElementById('info-mes').textContent =
+        `Comparación de registros: ${nombreMesActual} vs ${nombreMesAnterior}`;
+
+    const proyectos = new Set();
+    const tipos = new Set();
+
+    dataRows.forEach(r => {
+        proyectos.add(r[idxProyecto]?.trim() || "Sin proyecto");
+        tipos.add(r[idxTipo]?.trim() || "Sin tipo");
+    });
+
+    const listaProyectos = [...proyectos].sort();
+    const listaTipos = [...tipos];
+
+    const conteoActual = {};
+    const conteoAnterior = {};
+
+    listaTipos.forEach(tipo => {
+        conteoActual[tipo] = {};
+        conteoAnterior[tipo] = {};
+    });
+
+    dataRows.forEach(row => {
+
+        const proyecto = row[idxProyecto]?.trim() || "Sin proyecto";
+        const tipo = row[idxTipo]?.trim() || "Sin tipo";
+        const fechaStr = row[idxFecha]?.trim();
+
+        if (!fechaStr) return;
+
+        const fecha = new Date(fechaStr);
+        if (isNaN(fecha)) return;
+
+        if (fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual) {
+            conteoActual[tipo][proyecto] = (conteoActual[tipo][proyecto] || 0) + 1;
         }
-        return response.text();
-    })
-    .then(data => {
 
-        const rows = data.trim().split('\n');
-        const headers = rows[0].split(',');
-        const dataRows = rows.slice(1).map(row => row.split(','));
-
-        const idxFecha = headers.indexOf('fechaRegistro');
-        const idxProyecto = headers.indexOf('descProyecto');
-
-        if (idxFecha === -1 || idxProyecto === -1) {
-            throw new Error("No se encontraron las columnas 'fechaRegistro' o 'descProyecto'");
+        if (fecha.getMonth() === mesAnterior && fecha.getFullYear() === añoMesAnterior) {
+            conteoAnterior[tipo][proyecto] = (conteoAnterior[tipo][proyecto] || 0) + 1;
         }
 
-        const hoy = new Date();
+    });
 
-        const mesActual = hoy.getMonth();
-        const añoActual = hoy.getFullYear();
+    const colores = [
+        "#4dc9f6","#f67019","#f53794","#537bc4",
+        "#acc236","#166a8f","#00a950","#58595b","#8549ba"
+    ];
 
-        const mesAnterior = mesActual === 0 ? 11 : mesActual - 1;
-        const añoMesAnterior = mesActual === 0 ? añoActual - 1 : añoActual;
+    let datasets = [];
 
-        const nombreMesActual = hoy.toLocaleString('es', { month: 'long' });
+    listaTipos.forEach((tipo, i) => {
 
-        const fechaMesAnterior = new Date(añoMesAnterior, mesAnterior, 1);
-        const nombreMesAnterior = fechaMesAnterior.toLocaleString('es', { month: 'long' });
-
-        document.getElementById('info-mes').textContent =
-            `Comparación de registros: ${nombreMesActual} vs ${nombreMesAnterior} (${añoActual})`;
-
-        const conteoActual = {};
-        const conteoAnterior = {};
-
-        dataRows.forEach(row => {
-
-            const proyecto = row[idxProyecto]?.trim() || "Sin proyecto";
-            const fechaStr = row[idxFecha]?.trim();
-
-            if (fechaStr) {
-
-                const fecha = new Date(fechaStr);
-
-                if (!isNaN(fecha)) {
-
-                    if (fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual) {
-                        conteoActual[proyecto] = (conteoActual[proyecto] || 0) + 1;
-                    }
-
-                    if (fecha.getMonth() === mesAnterior && fecha.getFullYear() === añoMesAnterior) {
-                        conteoAnterior[proyecto] = (conteoAnterior[proyecto] || 0) + 1;
-                    }
-                }
-            }
-
+        datasets.push({
+            label: `${tipo} (${nombreMesActual})`,
+            data: listaProyectos.map(p => conteoActual[tipo][p] || 0),
+            backgroundColor: colores[i % colores.length],
+            stack: "mesActual"
         });
 
-        const todosProyectos = [...new Set(dataRows.map(row =>
-            row[idxProyecto]?.trim() || "Sin proyecto"
-        ))].sort();
+        datasets.push({
+            label: `${tipo} (${nombreMesAnterior})`,
+            data: listaProyectos.map(p => conteoAnterior[tipo][p] || 0),
+            backgroundColor: colores[i % colores.length],
+            stack: "mesAnterior"
+        });
 
-        const valoresActual = todosProyectos.map(p => conteoActual[p] || 0);
-        const valoresAnterior = todosProyectos.map(p => conteoAnterior[p] || 0);
+    });
 
-        const ctx = document.getElementById('grafico').getContext('2d');
+    const ctx = document.getElementById("grafico").getContext("2d");
 
-        new Chart(ctx, {
+    new Chart(ctx, {
 
-            type: 'bar',
+        type: "bar",
 
-            data: {
-                labels: todosProyectos,
-                datasets: [
+        data: {
+            labels: listaProyectos,
+            datasets: datasets
+        },
 
-                    {
-                        label: `Mes actual (${nombreMesActual})`,
-                        data: valoresActual,
-                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    },
+        options: {
 
-                    {
-                        label: `Mes anterior (${nombreMesAnterior})`,
-                        data: valoresAnterior,
-                        backgroundColor: 'rgba(255, 159, 64, 0.7)',
-                        borderColor: 'rgba(255, 159, 64, 1)',
-                        borderWidth: 1
-                    }
+            indexAxis: "y",
 
-                ]
+            responsive: true,
+
+            plugins: {
+                legend: {
+                    position: "bottom"
+                }
             },
 
-            options: {
+            scales: {
 
-                responsive: true,
-
-                indexAxis: 'y', // <- ESTO LO HACE HORIZONTAL
-
-                plugins: {
-                    legend: {
-                        position: 'top'
+                x: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: "Cantidad de registros"
                     }
                 },
 
-                scales: {
-
-                    x: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Cantidad de registros'
-                        }
-                    },
-
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Proyecto'
-                        }
+                y: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: "Proyecto"
                     }
-
                 }
 
             }
 
-        });
+        }
 
-    })
-    .catch(error => {
-        document.body.innerHTML +=
-            `<div style="color:red;text-align:center;margin-top:50px">
-            ❌ Error: ${error.message}
-        </div>`;
     });
+
+})
+.catch(error => {
+
+    document.body.innerHTML +=
+    `<div style="color:red;text-align:center;margin-top:50px">
+    ❌ Error: ${error.message}
+    </div>`;
+
+});
 
 </script>
