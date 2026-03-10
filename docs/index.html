@@ -1,61 +1,5 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Estado Obra - Registros por Proyecto</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 40px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h2 {
-            color: #333;
-            margin-top: 0;
-            text-align: center;
-        }
-        .info {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-        }
-        canvas {
-            max-width: 100%;
-            height: auto;
-        }
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            color: #999;
-            font-size: 0.9em;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>📊 Registros por Proyecto - Mes Actual</h2>
-        <div class="info" id="info-mes">Cargando datos...</div>
-        
-        <!-- Gráfico de registros por proyecto -->
-        <canvas id="grafico"></canvas>
-        
-        <div class="footer">
-            Datos actualizados desde el archivo estadoObra_filtrado.csv
-        </div>
-    </div>
-
 <script>
-const csvUrl = window.location.pathname.replace("index.html","") + "estadoObra_filtrado.csv";
+const csvUrl = "estadoObra_filtrado.csv";
 
 fetch(csvUrl)
     .then(response => {
@@ -65,13 +9,11 @@ fetch(csvUrl)
         return response.text();
     })
     .then(data => {
+
         const rows = data.trim().split('\n');
-        
-        // Procesar datos para el gráfico
         const headers = rows[0].split(',');
         const dataRows = rows.slice(1).map(row => row.split(','));
 
-        // Índices de las columnas que nos interesan
         const idxFecha = headers.indexOf('fechaRegistro');
         const idxProyecto = headers.indexOf('descProyecto');
 
@@ -79,121 +21,125 @@ fetch(csvUrl)
             throw new Error("No se encontraron las columnas 'fechaRegistro' o 'descProyecto'");
         }
 
-        // Obtener mes y año actual
         const hoy = new Date();
-        const mesActual = hoy.getMonth(); // 0 = Enero, 11 = Diciembre
-        const añoActual = hoy.getFullYear();
-        
-        // Nombre del mes en español
-        const nombreMes = hoy.toLocaleString('es', { month: 'long' });
-        
-        // Actualizar info del mes
-        document.getElementById('info-mes').textContent = 
-            `Registros durante ${nombreMes} de ${añoActual}`;
 
-        // Contar registros por proyecto en el mes actual
-        const conteo = {};
+        const mesActual = hoy.getMonth();
+        const añoActual = hoy.getFullYear();
+
+        const mesAnterior = mesActual === 0 ? 11 : mesActual - 1;
+        const añoMesAnterior = mesActual === 0 ? añoActual - 1 : añoActual;
+
+        const nombreMesActual = hoy.toLocaleString('es', { month: 'long' });
+
+        const fechaMesAnterior = new Date(añoMesAnterior, mesAnterior, 1);
+        const nombreMesAnterior = fechaMesAnterior.toLocaleString('es', { month: 'long' });
+
+        document.getElementById('info-mes').textContent =
+            `Comparación de registros: ${nombreMesActual} vs ${nombreMesAnterior} (${añoActual})`;
+
+        const conteoActual = {};
+        const conteoAnterior = {};
 
         dataRows.forEach(row => {
+
             const proyecto = row[idxProyecto]?.trim() || "Sin proyecto";
             const fechaStr = row[idxFecha]?.trim();
 
             if (fechaStr) {
-                // Intentar parsear la fecha (puede venir en diferentes formatos)
+
                 const fecha = new Date(fechaStr);
-                if (!isNaN(fecha) && fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual) {
-                    conteo[proyecto] = (conteo[proyecto] || 0) + 1;
+
+                if (!isNaN(fecha)) {
+
+                    if (fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual) {
+                        conteoActual[proyecto] = (conteoActual[proyecto] || 0) + 1;
+                    }
+
+                    if (fecha.getMonth() === mesAnterior && fecha.getFullYear() === añoMesAnterior) {
+                        conteoAnterior[proyecto] = (conteoAnterior[proyecto] || 0) + 1;
+                    }
                 }
             }
+
         });
 
-        // Obtener todos los proyectos únicos
-        const todosProyectos = [...new Set(dataRows.map(row => 
+        const todosProyectos = [...new Set(dataRows.map(row =>
             row[idxProyecto]?.trim() || "Sin proyecto"
-        ))];
-        
-        // Ordenar proyectos alfabéticamente
-        const proyectosOrdenados = todosProyectos.sort();
+        ))].sort();
 
-        // Preparar datos para el gráfico
-        const labels = proyectosOrdenados;
-        const valores = proyectosOrdenados.map(proj => conteo[proj] || 0);
-        
-        // Calcular total de registros en el mes
-        const totalRegistros = valores.reduce((a, b) => a + b, 0);
+        const valoresActual = todosProyectos.map(p => conteoActual[p] || 0);
+        const valoresAnterior = todosProyectos.map(p => conteoAnterior[p] || 0);
 
-        // Crear gráfico
         const ctx = document.getElementById('grafico').getContext('2d');
+
         new Chart(ctx, {
+
             type: 'bar',
+
             data: {
-                labels: labels,
-                datasets: [{
-                    label: `Número de registros`,
-                    data: valores,
-                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 2,
-                    borderRadius: 5,
-                    barPercentage: 0.7,
-                }]
+                labels: todosProyectos,
+                datasets: [
+
+                    {
+                        label: `Mes actual (${nombreMesActual})`,
+                        data: valoresActual,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+
+                    {
+                        label: `Mes anterior (${nombreMesAnterior})`,
+                        data: valoresAnterior,
+                        backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        borderWidth: 1
+                    }
+
+                ]
             },
+
             options: {
+
                 responsive: true,
-                maintainAspectRatio: true,
+
+                indexAxis: 'y', // <- ESTO LO HACE HORIZONTAL
+
                 plugins: {
                     legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `Registros: ${context.raw}`;
-                            }
-                        }
+                        position: 'top'
                     }
                 },
+
                 scales: {
-                    y: {
+
+                    x: {
                         beginAtZero: true,
-                        stepSize: 1,
                         title: {
                             display: true,
-                            text: 'Cantidad de registros',
-                            font: { weight: 'bold' }
-                        },
-                        grid: {
-                            color: 'rgba(0,0,0,0.05)'
+                            text: 'Cantidad de registros'
                         }
                     },
-                    x: {
+
+                    y: {
                         title: {
                             display: true,
-                            text: 'Proyecto',
-                            font: { weight: 'bold' }
-                        },
-                        grid: {
-                            display: false
+                            text: 'Proyecto'
                         }
                     }
-                }
-            }
-        });
 
-        // Si no hay registros en el mes, mostrar un mensaje
-        if (totalRegistros === 0) {
-            document.getElementById('info-mes').innerHTML += 
-                '<br><span style="color: #f39c12;">⚠️ No hay registros en este mes</span>';
-        }
+                }
+
+            }
+
+        });
 
     })
     .catch(error => {
-        document.body.innerHTML += 
-            `<div style="color: red; text-align: center; margin-top: 50px;">
-                ❌ Error: ${error.message}
-            </div>`;
+        document.body.innerHTML +=
+            `<div style="color:red;text-align:center;margin-top:50px">
+            ❌ Error: ${error.message}
+        </div>`;
     });
-</script>
 
-</body>
-</html>
+</script>
